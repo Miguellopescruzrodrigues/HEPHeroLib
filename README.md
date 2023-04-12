@@ -4,13 +4,22 @@
 
 # Installation
 
-- Download from Git
-git clone https://github.com/DESY-CBPF-UERJ/HEPHeroLib.git
+Download from Git
 
-- Update package
+```bash
+git clone https://github.com/DESY-CBPF-UERJ/HEPHeroLib.git
+```
+
+Update package
+
+```bash
 cd HEPHeroLib/
 bash update.sh
+```
 
-- See the version
+See the version
+
+```bash
 cat src/__init__.py
+```
 
