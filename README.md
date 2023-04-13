@@ -1,4 +1,4 @@
-# ![HEPHeroLib](logo.svg)
+# ![HEPHeroLib](logolib.svg)
 
 **HEPHeroLib - Library used to process data from the HEPHero framework**
 
