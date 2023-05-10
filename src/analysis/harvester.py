@@ -77,7 +77,7 @@ class harvester:
         
         self.sys_IDs = []
         self.sys_labels = []
-        self.sys_colors = ["dimgrey", "blue", "limegreen", "red",  "darkgoldenrod", "darkgreen", "darkorange",  "skyblue", "darkviolet", "aqua", "gold", "pink", "magenta", "darkkhaki", "lime", "greenyellow", "sandybrown", "brown", "mediumpurple", "forestgreen", "fuchsia", "goldenrod", "springgreen", "tomato", "royalblue", "chocolate", "aquamarine", "orange", "blue", "limegreen", "red",  "darkgoldenrod", "darkgreen", "darkorange",  "skyblue", "darkviolet", "aqua", "gold", "pink", "magenta", "darkkhaki", "lime", "greenyellow", "sandybrown", "brown", "mediumpurple", "forestgreen", "fuchsia", "goldenrod", "springgreen", "tomato", "royalblue", "chocolate", "aquamarine", "orange"]  
+        self.sys_colors = ["dimgrey", "limegreen", "blue", "red",  "darkgoldenrod", "darkgreen", "darkorange",  "skyblue", "darkviolet", "aqua", "gold", "pink", "magenta", "darkkhaki", "lime", "greenyellow", "sandybrown", "brown", "mediumpurple", "forestgreen", "fuchsia", "goldenrod", "springgreen", "tomato", "royalblue", "chocolate", "aquamarine", "orange", "limegreen", "blue", "red",  "darkgoldenrod", "darkgreen", "darkorange",  "skyblue", "darkviolet", "aqua", "gold", "pink", "magenta", "darkkhaki", "lime", "greenyellow", "sandybrown", "brown", "mediumpurple", "forestgreen", "fuchsia", "goldenrod", "springgreen", "tomato", "royalblue", "chocolate", "aquamarine", "orange"]  
         
         #self.smear_factor = smear_factor
         self.groups = groups
@@ -1496,123 +1496,64 @@ class harvester:
             x = np.array(plot_bins)
             dx = np.array([ (x[i+1]-x[i]) for i in range(x.size-1)])
             x = x[:-1]
-            sys_total_unc_mean = np.maximum(np.abs(self.sys_total_unc_up), np.abs(self.sys_total_unc_down))
-            sys_total_unc_sgn = np.abs(self.sys_total_unc_up) - np.abs(self.sys_total_unc_down)
-            hist_mean = np.insert(sys_total_unc_mean, 0, sys_total_unc_mean[0], axis=0) 
             hist_up = np.insert(self.sys_total_unc_up, 0, self.sys_total_unc_up[0], axis=0)
             hist_down = np.insert(self.sys_total_unc_down, 0, self.sys_total_unc_down[0], axis=0)
-            plt.step(plot_bins, hist_mean, label="Total", color="black", linewidth=1.8)
+            plt.step(plot_bins, np.abs(hist_down), color="black", linestyle="dotted", linewidth=1.8)
+            plt.step(plot_bins, np.abs(hist_up), label="Total", color="black", linewidth=1.8)
             for ix in range(len(x)):
                 
-                if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color="black", markerfacecolor='white')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color="black", markerfacecolor='white')
-                    
-                elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color="black", markerfacecolor='white')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color="black", markerfacecolor='white')
-                    
+                # DOWN
+                if hist_down[1:][ix] >= 0:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='^', color="black", markerfacecolor='white', markersize=7, markeredgewidth=0.7)
+                else:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='v', color="black", markerfacecolor='white', markersize=7, markeredgewidth=0.7)
+                
+                # UP
+                if hist_up[1:][ix] >= 0:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='^', color="black", markerfacecolor='black', markersize=7, markeredgewidth=0)
+                else:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='v', color="black", markerfacecolor='black', markersize=7, markeredgewidth=0)
+                
             height = np.abs(np.abs(hist_up[1:])-np.abs(hist_down[1:]))
             bottom = np.minimum(np.abs(hist_down[1:]), np.abs(hist_up[1:]))
-            plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color='black', alpha=0.2, zorder=-1)
+            plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color='black', alpha=0.15, zorder=-1)
             
             i_colors = 0
             for i in range(len(self.sys_IDs)):
                 if self.sys_labels[i] not in veto_sys_group_list:
-                    sys_unc_mean = np.maximum(np.abs(self.sys_unc_table2D[self.sys_IDs[i]][1]), np.abs(self.sys_unc_table2D[self.sys_IDs[i]][0]))
-                    sys_unc_sgn = np.abs(self.sys_unc_table2D[self.sys_IDs[i]][1]) - np.abs(self.sys_unc_table2D[self.sys_IDs[i]][0])
-                    hist_mean = np.insert(sys_unc_mean, 0, sys_unc_mean[0], axis=0) 
                     hist_up = np.insert(self.sys_unc_table2D[self.sys_IDs[i]][1], 0, self.sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
                     hist_down = np.insert(self.sys_unc_table2D[self.sys_IDs[i]][0], 0, self.sys_unc_table2D[self.sys_IDs[i]][0][0], axis=0)
-                    
-                    #syst_name = self.sys_labels[i]
                     sys_color=self.sys_colors[i_colors]
-                    #if( syst_name == "PDF" or syst_name == "AlphaS"  or syst_name == "Scales"  or syst_name == "ISR"  or syst_name == "FSR"  or syst_name[-2:] == "XS" ):
-                    #    linestyle="dotted"
-                    #else:
-                    linestyle="-"
 
-                    plt.step(plot_bins, hist_mean, label=self.sys_labels[i], color=sys_color, linewidth=1.8, linestyle=linestyle )
+                    plt.step(plot_bins, np.abs(hist_up), label=self.sys_labels[i], color=sys_color, linewidth=1.8, linestyle="-" )
+                    plt.step(plot_bins, np.abs(hist_down), color=sys_color, linewidth=1.8, linestyle="dotted" )
                     for ix in range(len(x)):
                         
-                        if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor='white', zorder=100+i)
-                    
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor='white', zorder=100+i)
+                        # DOWN
+                        if hist_down[1:][ix] >= 0:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                        else:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                        
+                        # UP
+                        if hist_up[1:][ix] >= 0:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
+                        else:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
                     
                     height = np.abs(np.abs(hist_up[1:])-np.abs(hist_down[1:]))
                     bottom = np.minimum(np.abs(hist_down[1:]), np.abs(hist_up[1:]))
-                    plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.25, zorder=-2+i)
+                    plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.15, zorder=-2+i)
                     i_colors += 1
                     
             if self.groups is not None:        
                 for i in range(len(self.sys_groups_name)):
-                    sys_unc_mean = np.maximum(np.abs(self.sys_groups_unc_up[i]), np.abs(self.sys_groups_unc_down[i]))
-                    sys_unc_sgn = np.abs(self.sys_groups_unc_up[i]) - np.abs(self.sys_groups_unc_down[i])
-                    hist_mean = np.insert(sys_unc_mean, 0, sys_unc_mean[0], axis=0) 
                     hist_up = np.insert(self.sys_groups_unc_up[i], 0, self.sys_groups_unc_up[i][0], axis=0)
                     hist_down = np.insert(self.sys_groups_unc_down[i], 0, self.sys_groups_unc_down[i][0], axis=0)
-                    
-                    #syst_name = self.sys_groups_name[i]
+                    hist_max = np.maximum(np.abs(hist_down), np.abs(hist_up))
                     sys_color=self.sys_colors[i+i_colors]
-                    #if( syst_name == "PDF" or syst_name == "AlphaS"  or syst_name == "Scales"  or syst_name == "ISR"  or syst_name == "FSR"  or syst_name[-2:] == "XS" ):
-                    #    linestyle="dotted"
-                    #else:
-                    linestyle="-"
-
-                    plt.step(plot_bins, hist_mean, label=self.sys_groups_name[i], color=sys_color, linewidth=1.8, linestyle=linestyle )
-                    for ix in range(len(x)):
-                        
-                        if (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor='white', zorder=100+i)
                     
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor='white', zorder=100+i)
-                    
-                    height = np.zeros(len(x))
-                    bottom = np.zeros(len(x))
-                    for ix in range(len(x)):
-                        if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) or (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0):
-                            bottom[ix] = np.maximum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                        else:
-                            height[ix] = np.abs(np.abs(hist_up[1:][ix])-np.abs(hist_down[1:][ix]))
-                            bottom[ix] = np.minimum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                    plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.25, zorder=-2+i)
+                    plt.step(plot_bins, hist_max, label=self.sys_groups_name[i], color=sys_color, linewidth=1.8, linestyle="-" )
     
     #==============================================================================================================
     def frac_signal_syst_plot(self, ax, version=1, width="physical"):
@@ -1656,124 +1597,64 @@ class harvester:
             x = np.array(plot_bins)
             dx = np.array([ (x[i+1]-x[i]) for i in range(x.size-1)])
             x = x[:-1]
-            sys_total_unc_mean = np.maximum(np.abs(self.signal_sys_total_unc_up), np.abs(self.signal_sys_total_unc_down))
-            sys_total_unc_sgn = np.abs(self.signal_sys_total_unc_up) - np.abs(self.signal_sys_total_unc_down)
-            hist_mean = np.insert(sys_total_unc_mean, 0, sys_total_unc_mean[0], axis=0) 
             hist_up = np.insert(self.signal_sys_total_unc_up, 0, self.signal_sys_total_unc_up[0], axis=0)
             hist_down = np.insert(self.signal_sys_total_unc_down, 0, self.signal_sys_total_unc_down[0], axis=0)
-            plt.step(plot_bins, hist_mean, label="Total", color="black", linewidth=1.8)
+            plt.step(plot_bins, np.abs(hist_down), color="black", linestyle="dotted", linewidth=1.8)
+            plt.step(plot_bins, np.abs(hist_up), label="Total", color="black", linewidth=1.8)
             for ix in range(len(x)):
                 
-                if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color="black", markerfacecolor='white')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color="black", markerfacecolor='white')
-                    
-                elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color="black", markerfacecolor='white')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color="black", markerfacecolor='black')
-                elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                    plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color="black", markerfacecolor='white')
-                    
-                    
+                # DOWN
+                if hist_down[1:][ix] >= 0:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='^', color="black", markerfacecolor='white', markersize=7, markeredgewidth=0.7)
+                else:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='v', color="black", markerfacecolor='white', markersize=7, markeredgewidth=0.7)
+                
+                # UP
+                if hist_up[1:][ix] >= 0:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='^', color="black", markerfacecolor='black', markersize=7, markeredgewidth=0)
+                else:
+                    plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='v', color="black", markerfacecolor='black', markersize=7, markeredgewidth=0)
+                
             height = np.abs(np.abs(hist_up[1:])-np.abs(hist_down[1:]))
             bottom = np.minimum(np.abs(hist_down[1:]), np.abs(hist_up[1:]))
-            plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color='black', alpha=0.2, zorder=-1)
+            plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color='black', alpha=0.15, zorder=-1)
             
             i_colors = 0
             for i in range(len(self.sys_IDs)):
                 if self.sys_labels[i] not in veto_sys_group_list:
-                    sys_unc_mean = np.maximum(np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][1]), np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][0]))
-                    sys_unc_sgn = np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][1]) - np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][0])
-                    hist_mean = np.insert(sys_unc_mean, 0, sys_unc_mean[0], axis=0) 
                     hist_up = np.insert(self.signal_sys_unc_table2D[self.sys_IDs[i]][1], 0, self.signal_sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
                     hist_down = np.insert(self.signal_sys_unc_table2D[self.sys_IDs[i]][0], 0, self.signal_sys_unc_table2D[self.sys_IDs[i]][0][0], axis=0)
-                    
-                    #syst_name = self.sys_labels[i]
                     sys_color=self.sys_colors[i_colors]
-                    #if( syst_name == "PDF" or syst_name == "AlphaS"  or syst_name == "Scales"  or syst_name == "ISR"  or syst_name == "FSR"  or syst_name[-2:] == "XS" ):
-                    #    linestyle="dotted"
-                    #else:
-                    linestyle="-"
 
-                    plt.step(plot_bins, hist_mean, label=self.sys_labels[i], color=sys_color, linewidth=1.8, linestyle=linestyle )
+                    plt.step(plot_bins, np.abs(hist_up), label=self.sys_labels[i], color=sys_color, linewidth=1.8, linestyle="-" )
+                    plt.step(plot_bins, np.abs(hist_down), color=sys_color, linewidth=1.8, linestyle="dotted" )
                     for ix in range(len(x)):
                         
-                        if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor='white', zorder=100+i)
-                            
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor='white', zorder=100+i)    
-                            
+                        # DOWN
+                        if hist_down[1:][ix] >= 0:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                        else:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                        
+                        # UP
+                        if hist_up[1:][ix] >= 0:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
+                        else:
+                            plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
+                    
                     height = np.abs(np.abs(hist_up[1:])-np.abs(hist_down[1:]))
                     bottom = np.minimum(np.abs(hist_down[1:]), np.abs(hist_up[1:]))
-                    plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.25, zorder=-2+i)
+                    plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.15, zorder=-2+i)
                     i_colors += 1
                     
             if self.groups is not None:        
                 for i in range(len(self.signal_sys_groups_name)):
-                    sys_unc_mean = np.maximum(np.abs(self.signal_sys_groups_unc_up[i]), np.abs(self.signal_sys_groups_unc_down[i]))
-                    sys_unc_sgn = np.abs(self.signal_sys_groups_unc_up[i]) - np.abs(self.signal_sys_groups_unc_down[i])
-                    hist_mean = np.insert(sys_unc_mean, 0, sys_unc_mean[0], axis=0) 
                     hist_up = np.insert(self.signal_sys_groups_unc_up[i], 0, self.signal_sys_groups_unc_up[i][0], axis=0)
                     hist_down = np.insert(self.signal_sys_groups_unc_down[i], 0, self.signal_sys_groups_unc_down[i][0], axis=0)
-                    
-                    #syst_name = self.signal_sys_groups_name[i]
+                    hist_max = np.maximum(np.abs(hist_down), np.abs(hist_up))
                     sys_color=self.sys_colors[i+i_colors]
-                    #if( syst_name == "PDF" or syst_name == "AlphaS"  or syst_name == "Scales"  or syst_name == "ISR"  or syst_name == "FSR"  or syst_name[-2:] == "XS" ):
-                    #    linestyle="dotted"
-                    #else:
-                    linestyle="-"
-
-                    plt.step(plot_bins, hist_mean, label=self.signal_sys_groups_name[i], color=sys_color, linewidth=1.8, linestyle=linestyle )
-                    for ix in range(len(x)):
-                        
-                        if (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color=sys_color, markerfacecolor='white', zorder=100+i)
                     
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                        elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                            plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color=sys_color, markerfacecolor='white', zorder=100+i)
-                    
-                    height = np.zeros(len(x))
-                    bottom = np.zeros(len(x))
-                    for ix in range(len(x)):
-                        if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) or (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0):
-                            bottom[ix] = np.maximum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                        else:
-                            height[ix] = np.abs(np.abs(hist_up[1:][ix])-np.abs(hist_down[1:][ix]))
-                            bottom[ix] = np.minimum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                    plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.25, zorder=-2+i)
+                    plt.step(plot_bins, hist_max, label=self.signal_sys_groups_name[i], color=sys_color, linewidth=1.8, linestyle="-" )
                     
                     
     #==============================================================================================================
@@ -1818,49 +1699,14 @@ class harvester:
                 x = np.array(plot_bins)
                 dx = np.array([ (x[i+1]-x[i]) for i in range(x.size-1)])
                 x = x[:-1]
-                sys_total_unc_mean = np.maximum(np.abs(self.sys_groups_unc_up[i_group]), np.abs(self.sys_groups_unc_down[i_group]))
-                sys_total_unc_sgn = np.abs(self.sys_groups_unc_up[i_group]) - np.abs(self.sys_groups_unc_down[i_group])
-                hist_mean = np.insert(sys_total_unc_mean, 0, sys_total_unc_mean[0], axis=0) 
                 hist_up = np.insert(self.sys_groups_unc_up[i_group], 0, self.sys_groups_unc_up[i_group][0], axis=0)
                 hist_down = np.insert(self.sys_groups_unc_down[i_group], 0, self.sys_groups_unc_down[i_group][0], axis=0)
-                plt.step(plot_bins, hist_mean, label=group_name, color="black", linewidth=1.8)
-                for ix in range(len(x)):
-                    
-                    if (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='white')
-                    elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='white')
-                        
-                    elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='white')
-                    elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='white')
-                        
-                height = np.zeros(len(x))
-                bottom = np.zeros(len(x))
-                for ix in range(len(x)):
-                    if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) or (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0):
-                        bottom[ix] = np.maximum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                    else:
-                        height[ix] = np.abs(np.abs(hist_up[1:][ix])-np.abs(hist_down[1:][ix]))
-                        bottom[ix] = np.minimum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color='black', alpha=0.2, zorder=-1)
-                
+                hist_max = np.maximum(np.abs(hist_down), np.abs(hist_up))
+                plt.step(plot_bins, hist_max, label=group_name, color="black", linewidth=1.8)
                 
                 i_colors = 0
                 for i in range(len(self.sys_IDs)):
                     if self.sys_labels[i] in sys_group_list:
-                        sys_unc_mean = np.maximum(np.abs(self.sys_unc_table2D[self.sys_IDs[i]][1]), np.abs(self.sys_unc_table2D[self.sys_IDs[i]][0]))
-                        sys_unc_sgn = np.abs(self.sys_unc_table2D[self.sys_IDs[i]][1]) - np.abs(self.sys_unc_table2D[self.sys_IDs[i]][0])
-                        hist_mean = np.insert(sys_unc_mean, 0, sys_unc_mean[0], axis=0) 
                         hist_up = np.insert(self.sys_unc_table2D[self.sys_IDs[i]][1], 0, self.sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
                         hist_down = np.insert(self.sys_unc_table2D[self.sys_IDs[i]][0], 0, self.sys_unc_table2D[self.sys_IDs[i]][0][0], axis=0)
                         
@@ -1868,41 +1714,30 @@ class harvester:
                         prefix = group_name + "_"
                         if prefix == plot_label[:len(prefix)]:
                             plot_label = plot_label[len(prefix):]
-                        
-                        #syst_name = self.sys_labels[i]
                         sys_color=self.sys_colors[i_colors]
-                        #if( syst_name == "PDF" or syst_name == "AlphaS"  or syst_name == "Scales"  or syst_name == "ISR"  or syst_name == "FSR"  or syst_name[-2:] == "XS" ):
-                        #    linestyle="dotted"
-                        #else:
-                        linestyle="-"
 
-                        plt.step(plot_bins, hist_mean, label=plot_label, color=sys_color, linewidth=1.8, linestyle=linestyle )
+                        plt.step(plot_bins, np.abs(hist_up), label=plot_label, color=sys_color, linewidth=1.8, linestyle="-" )
+                        plt.step(plot_bins, np.abs(hist_down), color=sys_color, linewidth=1.8, linestyle="dotted" )
                         for ix in range(len(x)):
                             
-                            if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor='white', zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        
-                            elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor='white', zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor='white', zorder=100+i)
+                            # DOWN
+                            if hist_down[1:][ix] >= 0:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                            else:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                            
+                            # UP
+                            if hist_up[1:][ix] >= 0:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
+                            else:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
                         
                         height = np.abs(np.abs(hist_up[1:])-np.abs(hist_down[1:]))
                         bottom = np.minimum(np.abs(hist_down[1:]), np.abs(hist_up[1:]))
-                        plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.25, zorder=-2+i)
+                        plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.15, zorder=-2+i)
                         i_colors += 1
                         
-                
+            
     #==============================================================================================================
     def frac_signal_group_syst_plot(self, ax, group_name, version=1, width="physical"):
         
@@ -1945,49 +1780,14 @@ class harvester:
                 x = np.array(plot_bins)
                 dx = np.array([ (x[i+1]-x[i]) for i in range(x.size-1)])
                 x = x[:-1]
-                sys_total_unc_mean = np.maximum(np.abs(self.signal_sys_groups_unc_up[i_group]), np.abs(self.signal_sys_groups_unc_down[i_group]))
-                sys_total_unc_sgn = np.abs(self.signal_sys_groups_unc_up[i_group]) - np.abs(self.signal_sys_groups_unc_down[i_group])
-                hist_mean = np.insert(sys_total_unc_mean, 0, sys_total_unc_mean[0], axis=0) 
                 hist_up = np.insert(self.signal_sys_groups_unc_up[i_group], 0, self.signal_sys_groups_unc_up[i_group][0], axis=0)
                 hist_down = np.insert(self.signal_sys_groups_unc_down[i_group], 0, self.signal_sys_groups_unc_down[i_group][0], axis=0)
-                plt.step(plot_bins, hist_mean, label=group_name, color="black", linewidth=1.8)
-                for ix in range(len(x)):
-                    
-                    if (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] > 0 and hist_down[1:][ix] < 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='white')
-                    elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] > 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='d', color="black", markerfacecolor='white')
-                        
-                    elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='white')
-                    elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_total_unc_sgn[ix] > 0 or np.abs(sys_total_unc_sgn[ix]) < 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='black')
-                    elif (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0) and (sys_total_unc_sgn[ix] < 0 and np.abs(sys_total_unc_sgn[ix]) > 0.0001):
-                        plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='o', color="black", markerfacecolor='white')
-                        
-                height = np.zeros(len(x))
-                bottom = np.zeros(len(x))
-                for ix in range(len(x)):
-                    if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) or (hist_up[1:][ix] <= 0 and hist_down[1:][ix] <= 0):
-                        bottom[ix] = np.maximum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                    else:
-                        height[ix] = np.abs(np.abs(hist_up[1:][ix])-np.abs(hist_down[1:][ix]))
-                        bottom[ix] = np.minimum(np.abs(hist_down[1:][ix]), np.abs(hist_up[1:][ix]))
-                plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color='black', alpha=0.2, zorder=-1)
-                
+                hist_max = np.maximum(np.abs(hist_down), np.abs(hist_up))
+                plt.step(plot_bins, hist_max, label=group_name, color="black", linewidth=1.8)
                 
                 i_colors = 0
                 for i in range(len(self.sys_IDs)):
                     if self.sys_labels[i] in sys_group_list:
-                        sys_unc_mean = np.maximum(np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][1]), np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][0]))
-                        sys_unc_sgn = np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][1]) - np.abs(self.signal_sys_unc_table2D[self.sys_IDs[i]][0])
-                        hist_mean = np.insert(sys_unc_mean, 0, sys_unc_mean[0], axis=0) 
                         hist_up = np.insert(self.signal_sys_unc_table2D[self.sys_IDs[i]][1], 0, self.signal_sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
                         hist_down = np.insert(self.signal_sys_unc_table2D[self.sys_IDs[i]][0], 0, self.signal_sys_unc_table2D[self.sys_IDs[i]][0][0], axis=0)
                         
@@ -1995,38 +1795,27 @@ class harvester:
                         prefix = group_name + "_"
                         if prefix == plot_label[:len(prefix)]:
                             plot_label = plot_label[len(prefix):]
-                        
-                        #syst_name = self.sys_labels[i]
                         sys_color=self.sys_colors[i_colors]
-                        #if( syst_name == "PDF" or syst_name == "AlphaS"  or syst_name == "Scales"  or syst_name == "ISR"  or syst_name == "FSR"  or syst_name[-2:] == "XS" ):
-                        #    linestyle="dotted"
-                        #else:
-                        linestyle="-"
 
-                        plt.step(plot_bins, hist_mean, label=plot_label, color=sys_color, linewidth=1.8, linestyle=linestyle )
+                        plt.step(plot_bins, np.abs(hist_up), label=plot_label, color=sys_color, linewidth=1.8, linestyle="-" )
+                        plt.step(plot_bins, np.abs(hist_down), color=sys_color, linewidth=1.8, linestyle="dotted" )
                         for ix in range(len(x)):
                             
-                            if (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='^', color=sys_color, markerfacecolor='white', zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='v', color=sys_color, markerfacecolor='white', zorder=100+i)
-                        
-                            elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] >= 0 and hist_down[1:][ix] >= 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='>', color=sys_color, markerfacecolor='white', zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] > 0 or np.abs(sys_unc_sgn[ix]) < 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor=sys_color, zorder=100+i)
-                            elif (hist_up[1:][ix] < 0 and hist_down[1:][ix] < 0) and (sys_unc_sgn[ix] < 0 and np.abs(sys_unc_sgn[ix]) > 0.0001):
-                                plt.plot(x[ix]+0.5*dx[ix], hist_mean[1:][ix], linewidth=0, marker='<', color=sys_color, markerfacecolor='white', zorder=100+i)
+                            # DOWN
+                            if hist_down[1:][ix] >= 0:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                            else:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_down[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor='white', markersize=7, markeredgewidth=0.7, zorder=100+i)
+                            
+                            # UP
+                            if hist_up[1:][ix] >= 0:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='^', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
+                            else:
+                                plt.plot(x[ix]+0.5*dx[ix], np.abs(hist_up[1:][ix]), linewidth=0, marker='v', color=sys_color, markerfacecolor=sys_color, markersize=7, markeredgewidth=0, zorder=100+i)
                         
                         height = np.abs(np.abs(hist_up[1:])-np.abs(hist_down[1:]))
                         bottom = np.minimum(np.abs(hist_down[1:]), np.abs(hist_up[1:]))
-                        plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.25, zorder=-2+i)
+                        plt.bar(x=plot_bins[:-1], height=height, bottom=bottom, width=np.diff(plot_bins), align='edge', linewidth=0, color=sys_color, alpha=0.15, zorder=-2+i)
                         i_colors += 1
         
         
