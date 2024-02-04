@@ -24,12 +24,14 @@ setup(
     packages=[
     	'hepherolib',
     	'hepherolib.analysis',
-    	'hepherolib.data'
+    	'hepherolib.data',
+        'hepherolib.btageffmap'
     ],
     package_dir={
     	'hepherolib': 'src',
     	'hepherolib.analysis': 'src/analysis',
-    	'hepherolib.data': 'src/data'
+    	'hepherolib.data': 'src/data',
+    	'hepherolib.btageffmap': 'src/btageffmap'
     },
     install_requires=[
         "awkward0>=0.15.5",

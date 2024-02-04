@@ -259,7 +259,7 @@ def __bayesian(y_before, y_after, yratio):
     return ye_below, ye_above
 """
 
-def efficiency_plot( ax, var, dataframe, bit, label, color='black', bins=np.linspace(0,100,5), histograms=False, y2label="Events", uncertainty="clopper", multiprocess=True, overflow=False, underflow=False, weight=None ):
+def efficiency_plot( ax, var, dataframe, bit, label, color='black', bins=np.linspace(0,100,5), histograms=False, y2label="Events", uncertainty="clopper", multiprocess=True, overflow=False, underflow=False, weight=None, plot=True ):
     
     ax.set_ylim([0,1.05])
     plt.axhline(1, color='grey', linewidth=1, linestyle="dotted")
@@ -402,8 +402,8 @@ def efficiency_plot( ax, var, dataframe, bit, label, color='black', bins=np.lins
         
         N_eff_after = y_after**2/y2_after
         N_eff_not_after = y_not_after**2/y2_not_after
-        ye_below = 2*err_ratio.copy()
-        ye_above = 2*err_ratio.copy()
+        ye_below = err_ratio.copy() # 1 sigma
+        ye_above = err_ratio.copy() # 1 sigma
         good_approximation = True
         for i in range(err_ratio.size):
             if yratio[i]+ye_above[i] > 1:
@@ -422,12 +422,12 @@ def efficiency_plot( ax, var, dataframe, bit, label, color='black', bins=np.lins
             print(N_eff_not_after)
         
         
-        
-    x = np.array(bins)
-    dx = np.array([ (x[i+1]-x[i]) for i in range(x.size-1)])
-    x = x[:-1]       
-            
-    ax.errorbar(x+0.5*dx, yratio, yerr=[ye_below, ye_above], xerr=0.5*dx, fmt='.', ecolor=color, color=color, elinewidth=0.7, capsize=0, label=label)
+    if plot:
+        x = np.array(bins)
+        dx = np.array([ (x[i+1]-x[i]) for i in range(x.size-1)])
+        x = x[:-1]
+
+        ax.errorbar(x+0.5*dx, yratio, yerr=[ye_below, ye_above], xerr=0.5*dx, fmt='.', ecolor=color, color=color, elinewidth=0.7, capsize=0, label=label)
     
     return yratio, ye_below, ye_above    
     

@@ -63,7 +63,8 @@ def style(
     xlim=[], 
     ylim=[], 
     legend_ncol=1, 
-    legend_loc='upper right'
+    legend_loc='upper right',
+    energy_cm=13
 ):
     """
     Set up the plot style, legends and information on top. Many parameters available to be used if necessary
@@ -119,12 +120,12 @@ def style(
     if not(yticklabels):
         plt.setp(ax.get_yticklabels(), color="none")
     if (lumi != 0) or (year != 0):    
-        hep.cms.text("Work in progress", ax=ax, fontsize=13)
+        hep.cms.text("Preliminary", ax=ax, fontsize=13)
     if (lumi != 0) and (year != 0):
-        hep.cms.lumitext(str(lumi)+'$\ \mathrm{fb}^{-1}\ (13\ \mathrm{TeV}, $'+str(year)+'$)$', ax=ax, fontsize=13)
+        hep.cms.lumitext(str(lumi)+'$\ \mathrm{fb}^{-1}\ ('+str(energy_cm)+'\ \mathrm{TeV}, $'+str(year)+'$)$', ax=ax, fontsize=13)
     if (lumi != 0) and (year == 0):
-        hep.cms.lumitext(str(lumi)+'$\ \mathrm{fb}^{-1}\ (13\ \mathrm{TeV})$', ax=ax, fontsize=13)
+        hep.cms.lumitext(str(lumi)+'$\ \mathrm{fb}^{-1}\ ('+str(energy_cm)+'\ \mathrm{TeV})$', ax=ax, fontsize=13)
     if (lumi == 0) and (year != 0):
-        hep.cms.lumitext('$(13\ \mathrm{TeV}, $'+str(year)+'$)$', ax=ax, fontsize=13)
+        hep.cms.lumitext('$('+str(energy_cm)+'\ \mathrm{TeV}, $'+str(year)+'$)$', ax=ax, fontsize=13)
 
     ax.legend(numpoints=1, ncol=legend_ncol, prop={'size': 10.5}, frameon=False, loc=legend_loc)

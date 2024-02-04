@@ -19,9 +19,8 @@ class harvester:
     """
 
     #==============================================================================================================
-    def __init__(self, region, var, period, bins, backgrounds, bkg_labels, bkg_colors, signal, signal_label, signal_color, regions_labels, systematics, smooth_factor=0.5, smooth_repeat=1, analysis_name=None, signal_cross_section=None, groups=None, full_year_correlated=None):
+    def __init__(self, region, var, period, bins, backgrounds, bkg_labels, bkg_colors, signal, signal_label, signal_color, regions_labels, systematics, smooth_factor=1, smooth_repeat=2, symmetric_factor=999999999999, analysis_name=None, signal_cross_section=None, groups=None, full_year_correlated=None, processes_scale_factors=None, allow_syst_shape_only=True):
         
-        #print(systematics)
         systematics_temp = systematics.copy()
         for iSource in systematics.keys():
             if len(systematics[iSource][3]) > 0:
@@ -31,6 +30,14 @@ class harvester:
                     isub += 1
                 del systematics_temp[iSource]
         systematics = systematics_temp.copy()
+        
+        if groups is not None:
+            for igroup in groups:
+                if isinstance(igroup, list) and len(igroup) > 1:
+                    systematics_loop = systematics.copy()
+                    for iSource in systematics_loop.keys():
+                        if igroup[0] in iSource and iSource not in igroup[1:]:
+                            del systematics[iSource]
         
         #reorder sys_sources
         list_keys = []
@@ -66,9 +73,11 @@ class harvester:
         #Initialize tables (first index is source ID, second index is universe, and third index is process)
         self.hist_table3D = []
         self.unc_table3D = []       # Statistical unc. in the histograms
+        self.norm_table3D = []      # Normalization factor for Scales, PDF, ...
         for i in range(ID_max+1):
             self.hist_table3D.append([0, 0])
             self.unc_table3D.append([0, 0])
+            self.norm_table3D.append([0, 0])
         
         self.XS_syst_list = []
         for jSource in systematics.keys():    
@@ -98,14 +107,15 @@ class harvester:
         for j in range(len(self.processes)):
             self.processes[j] = re.sub('[^A-Za-z0-9]+', '', self.processes[j])
         
-        syst_shape_only = [value for value in self.processes if value+"CR" in self.regions_labels]
-        if signal_cross_section is not None:
-            syst_shape_only.append(self.processes[0])
-        #print(syst_shape_only)
         ProcType_has_norm_param = [False]*len(datasets)
-        for iProcType in range(len(datasets)):
-            if self.processes[iProcType] in syst_shape_only:
-                ProcType_has_norm_param[iProcType] = True
+        if allow_syst_shape_only:
+            syst_shape_only = [value for value in self.processes if value+"CR" in self.regions_labels]
+            if signal_cross_section is not None:
+                syst_shape_only.append(self.processes[0])
+            #print(syst_shape_only)
+            for iProcType in range(len(datasets)):
+                if self.processes[iProcType] in syst_shape_only:
+                    ProcType_has_norm_param[iProcType] = True
         print(self.processes)
         print(ProcType_has_norm_param)
         
@@ -141,6 +151,12 @@ class harvester:
                 Hist_ProcType[0] = 0.0001
             if (signal_cross_section is not None) and (iProcType == 0):
                 Hist_ProcType = Hist_ProcType/signal_cross_section
+            if processes_scale_factors is not None:
+                for ProcSF in processes_scale_factors:
+                    if iProcType == ProcSF[0]:
+                        Hist_ProcType = Hist_ProcType*ProcSF[1]
+                        break
+
                 
             list_ProcType_sum.append(Hist_ProcType.sum())
             
@@ -152,6 +168,10 @@ class harvester:
                 list_Hist_ProcType = []
                 list_Unc_ProcType = []
             
+                # Process SF uncertainty
+                list_Hist_ProcType_ProcSF_up = []
+                list_Hist_ProcType_ProcSF_down = []
+
                 # Luminosity uncertainty 
                 list_Hist_ProcType_lumi_up = []
                 list_Hist_ProcType_lumi_down = []
@@ -202,6 +222,12 @@ class harvester:
                     if (signal_cross_section is not None) and (iProcType == 0):
                         Hist_ProcType = Hist_ProcType/signal_cross_section
                         Unc_ProcType = Unc_ProcType/signal_cross_section
+                    if processes_scale_factors is not None:
+                        for ProcSF in processes_scale_factors:
+                            if iProcType == ProcSF[0]:
+                                Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                Unc_ProcType = Unc_ProcType*ProcSF[1]
+                                break
                 
                     list_Hist_ProcType.append(Hist_ProcType)
                     list_Unc_ProcType.append(Unc_ProcType)    
@@ -218,6 +244,22 @@ class harvester:
                     Hist_ProcType_stat_down[Hist_ProcType_stat_down < 0] = 0.0000001  # avoid down syst with negative number of events
                     list_Hist_ProcType_stat_up.append(Hist_ProcType_stat_up)
                     list_Hist_ProcType_stat_down.append(Hist_ProcType_stat_down)
+
+                    # Process SF uncertainty
+                    if processes_scale_factors is not None:
+                        Has_SF = False
+                        for ProcSF in processes_scale_factors:
+                            if iProcType == ProcSF[0]:
+                                Hist_ProcType_ProcSF_up = Hist_ProcType*(1 + ProcSF[2]/ProcSF[1])
+                                Hist_ProcType_ProcSF_down = Hist_ProcType*(1 - ProcSF[2]/ProcSF[1])
+                                Has_SF = True
+                                break
+                        if Has_SF:
+                            list_Hist_ProcType_ProcSF_up.append(Hist_ProcType_ProcSF_up)
+                            list_Hist_ProcType_ProcSF_down.append(Hist_ProcType_ProcSF_down)
+                        else:
+                            list_Hist_ProcType_ProcSF_up.append(Hist_ProcType)
+                            list_Hist_ProcType_ProcSF_down.append(Hist_ProcType)
                 
                 self.LumiUnc = LumiUnc
                 self.LumiUncorrUnc = LumiUncorrUnc
@@ -227,15 +269,23 @@ class harvester:
                 self.hist_table3D[0][0] = list_Hist_ProcType
                 self.unc_table3D[0][0] = list_Unc_ProcType
             
-                self.hist_table3D.append([list_Hist_ProcType_lumi_down, list_Hist_ProcType_lumi_up])  
-                self.hist_table3D.append([list_Hist_ProcType_stat_down, list_Hist_ProcType_stat_up])
-                # It's not necessary to get stat. unc. for lumi and stat. histograms. It is only used for the smoothing of histograms.
-                
-                self.sys_IDs.append(ID_max+2)
-                self.sys_IDs.append(ID_max+1)
-                self.sys_labels.append("Stat")
-                self.sys_labels.append("Lumi")
-        
+                if processes_scale_factors is None:
+                    self.hist_table3D.append([list_Hist_ProcType_lumi_down, list_Hist_ProcType_lumi_up])
+                    self.hist_table3D.append([list_Hist_ProcType_stat_down, list_Hist_ProcType_stat_up])
+                    self.sys_IDs.append(ID_max+2)
+                    self.sys_IDs.append(ID_max+1)
+                    self.sys_labels.append("Stat")
+                    self.sys_labels.append("Lumi")
+                else:
+                    self.hist_table3D.append([list_Hist_ProcType_ProcSF_down, list_Hist_ProcType_ProcSF_up])
+                    self.hist_table3D.append([list_Hist_ProcType_lumi_down, list_Hist_ProcType_lumi_up])
+                    self.hist_table3D.append([list_Hist_ProcType_stat_down, list_Hist_ProcType_stat_up])
+                    self.sys_IDs.append(ID_max+3)
+                    self.sys_IDs.append(ID_max+2)
+                    self.sys_IDs.append(ID_max+1)
+                    self.sys_labels.append("Stat")
+                    self.sys_labels.append("Lumi")
+                    self.sys_labels.append("ProcSF")
         
             #--------------------------------------------------------------------------------
             elif( "_" in iSource ):    
@@ -276,13 +326,20 @@ class harvester:
                     
                             Hist_ProcType = Hist_ProcType + np.array(Hist_new)
                             Unc_ProcType = np.sqrt(Unc_ProcType**2 + np.array(Unc_new)**2)
-                       
+                        #print("iSource", iSource)
+                        #print("Hist_ProcType.sum", Hist_ProcType.sum())
                         if Hist_ProcType.sum() == 0:
                             Hist_ProcType[0] = 0.0001
                             Unc_ProcType[0] = 0.0001
                         if (signal_cross_section is not None) and (iProcType == 0):
                             Hist_ProcType = Hist_ProcType/signal_cross_section
                             Unc_ProcType = Unc_ProcType/signal_cross_section
+                        if processes_scale_factors is not None:
+                            for ProcSF in processes_scale_factors:
+                                if iProcType == ProcSF[0]:
+                                    Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                    Unc_ProcType = Unc_ProcType*ProcSF[1]
+                                    break
                        
                         list_Hist_ProcType.append(Hist_ProcType)
                         list_Unc_ProcType.append(Unc_ProcType)
@@ -297,7 +354,7 @@ class harvester:
         
             #--------------------------------------------------------------------------------
             #elif( systematics[iSource][1] == 2 ):  
-            elif( (iSource != "CV") and (iSource != "Scales") and (iSource != "PDF") and (iSource != "AlphaS") and (iSource != "Recoil") and ("_" not in iSource) ):    
+            elif( (iSource != "CV") and (iSource != "Scales") and (iSource != "PDF") and (iSource != "Recoil") and (iSource != "TopPt") and ("_" not in iSource) ):
             
                 for iUniverse in range(2):  # loop in the universes
                     list_Hist_ProcType = []
@@ -341,6 +398,12 @@ class harvester:
                         if (signal_cross_section is not None) and (iProcType == 0):
                             Hist_ProcType = Hist_ProcType/signal_cross_section
                             Unc_ProcType = Unc_ProcType/signal_cross_section
+                        if processes_scale_factors is not None:
+                            for ProcSF in processes_scale_factors:
+                                if iProcType == ProcSF[0]:
+                                    Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                    Unc_ProcType = Unc_ProcType*ProcSF[1]
+                                    break
                        
                         list_Hist_ProcType.append(Hist_ProcType)
                         list_Unc_ProcType.append(Unc_ProcType)
@@ -357,65 +420,71 @@ class harvester:
                 
                 #----------------------------------------------------------------------------------
                 # Get the normalization factors from the "Scales" histograms
-                list_Hist_ProcType_scales_up = []
-                list_Hist_ProcType_scales_down = []
-                for iUniverse in range(systematics[iSource][1]):  # loop in the universes
-                    list_Hist_ProcType = []
-                    for iProcType in range(len(datasets)):  # loop in the proc_type_lists
-                        Hist_ProcType = np.zeros(len(bins)-1)
-                        for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
-                            Hist_name = var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(iUniverse)
-                            if Hist_name in datasets[iProcType][iProcDic]:
-                                proc_dic = datasets[iProcType][iProcDic][Hist_name]
-                            else:
-                                proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_0_0"]
-                            Hist_raw = proc_dic["Hist"]
-                            Start_raw = proc_dic["Start"]
-                            End_raw = proc_dic["End"]
-                            Nbins_raw = proc_dic["Nbins"]
-                            Delta_raw = (End_raw - Start_raw)/Nbins_raw
-                            
-                            Hist_new = [0]*(len(bins)-1)
-                                        
-                            for iRawBin in range(Nbins_raw):
-                                inf_raw = Start_raw + iRawBin*Delta_raw
-                                sup_raw = Start_raw + (iRawBin+1)*Delta_raw
+                if iSource == "Scales":
+                    list_Hist_ProcType_norm_up = []
+                    list_Hist_ProcType_norm_down = []
+                    for iUniverse in range(systematics[iSource][1]):  # loop in the universes
+                        list_Hist_ProcType = []
+                        for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+                            Hist_ProcType = np.zeros(len(bins)-1)
+                            for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
+                                Hist_name = var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(iUniverse)
+                                if Hist_name in datasets[iProcType][iProcDic]:
+                                    proc_dic = datasets[iProcType][iProcDic][Hist_name]
+                                else:
+                                    proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_0_0"]
+                                Hist_raw = proc_dic["Hist"]
+                                Start_raw = proc_dic["Start"]
+                                End_raw = proc_dic["End"]
+                                Nbins_raw = proc_dic["Nbins"]
+                                Delta_raw = (End_raw - Start_raw)/Nbins_raw
+
+                                Hist_new = [0]*(len(bins)-1)
+
+                                for iRawBin in range(Nbins_raw):
+                                    inf_raw = Start_raw + iRawBin*Delta_raw
+                                    sup_raw = Start_raw + (iRawBin+1)*Delta_raw
+                                    for iNewBin in range(len(Hist_new)):
+                                        if( (inf_raw >= bins[iNewBin]) and (sup_raw <= bins[iNewBin+1]) ):
+                                            Hist_new[iNewBin] = Hist_new[iNewBin] + Hist_raw[iRawBin]
+
                                 for iNewBin in range(len(Hist_new)):
-                                    if( (inf_raw >= bins[iNewBin]) and (sup_raw <= bins[iNewBin+1]) ):
-                                        Hist_new[iNewBin] = Hist_new[iNewBin] + Hist_raw[iRawBin]
-                        
-                            for iNewBin in range(len(Hist_new)):
-                                if Hist_new[iNewBin] < 0:
-                                    Hist_new[iNewBin] = 0
-                            
-                            
-                            Hist_ProcType = Hist_ProcType + np.array(Hist_new)
-                        
-                        if Hist_ProcType.sum() == 0:
-                            Hist_ProcType[0] = 0.0001
-                        if (signal_cross_section is not None) and (iProcType == 0):
-                            Hist_ProcType = Hist_ProcType/signal_cross_section
-                        
-                        list_Hist_ProcType.append(Hist_ProcType)
-    
-                    if iUniverse == 0:
-                        list_Hist_ProcType_scales_up = copy.deepcopy(list_Hist_ProcType)
-                        list_Hist_ProcType_scales_down = copy.deepcopy(list_Hist_ProcType)
-                    else:
-                        for ihist in range(len(list_Hist_ProcType)):
-                            for ibin in range(len(list_Hist_ProcType[ihist])):
-                                if list_Hist_ProcType[ihist][ibin] > list_Hist_ProcType_scales_up[ihist][ibin]:
-                                    list_Hist_ProcType_scales_up[ihist][ibin] = list_Hist_ProcType[ihist][ibin]
-                                if list_Hist_ProcType[ihist][ibin] < list_Hist_ProcType_scales_down[ihist][ibin]:
-                                    list_Hist_ProcType_scales_down[ihist][ibin] = list_Hist_ProcType[ihist][ibin]
-        
-                list_ProcType_scales_up_sum = []
-                list_ProcType_scales_down_sum = []
-                for iProcType in range(len(datasets)):  # loop in the proc_type_lists
-                    list_ProcType_scales_up_sum.append(list_Hist_ProcType_scales_up[iProcType].sum())
-                    list_ProcType_scales_down_sum.append(list_Hist_ProcType_scales_down[iProcType].sum())
-            
-            
+                                    if Hist_new[iNewBin] < 0:
+                                        Hist_new[iNewBin] = 0
+
+
+                                Hist_ProcType = Hist_ProcType + np.array(Hist_new)
+
+                            if Hist_ProcType.sum() == 0:
+                                Hist_ProcType[0] = 0.0001
+                            if (signal_cross_section is not None) and (iProcType == 0):
+                                Hist_ProcType = Hist_ProcType/signal_cross_section
+                            if processes_scale_factors is not None:
+                                for ProcSF in processes_scale_factors:
+                                    if iProcType == ProcSF[0]:
+                                        Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                        break
+
+                            list_Hist_ProcType.append(Hist_ProcType)
+
+                        if iUniverse == 0:
+                            list_Hist_ProcType_norm_up = copy.deepcopy(list_Hist_ProcType)
+                            list_Hist_ProcType_norm_down = copy.deepcopy(list_Hist_ProcType)
+                        else:
+                            for ihist in range(len(list_Hist_ProcType)):
+                                for ibin in range(len(list_Hist_ProcType[ihist])):
+                                    if list_Hist_ProcType[ihist][ibin] > list_Hist_ProcType_norm_up[ihist][ibin]:
+                                        list_Hist_ProcType_norm_up[ihist][ibin] = list_Hist_ProcType[ihist][ibin]
+                                    if list_Hist_ProcType[ihist][ibin] < list_Hist_ProcType_norm_down[ihist][ibin]:
+                                        list_Hist_ProcType_norm_down[ihist][ibin] = list_Hist_ProcType[ihist][ibin]
+
+                    list_ProcType_norm_up_sum = []
+                    list_ProcType_norm_down_sum = []
+                    for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+                        list_ProcType_norm_up_sum.append(list_Hist_ProcType_norm_up[iProcType].sum())
+                        list_ProcType_norm_down_sum.append(list_Hist_ProcType_norm_down[iProcType].sum())
+
+
                 #----------------------------------------------------------------------------------
                 list_Hist_ProcType_up = []
                 list_Unc_ProcType_up = []
@@ -468,6 +537,12 @@ class harvester:
                         if (signal_cross_section is not None) and (iProcType == 0):
                             Hist_ProcType = Hist_ProcType/signal_cross_section
                             Unc_ProcType = Unc_ProcType/signal_cross_section
+                        if processes_scale_factors is not None:
+                            for ProcSF in processes_scale_factors:
+                                if iProcType == ProcSF[0]:
+                                    Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                    Unc_ProcType = Unc_ProcType*ProcSF[1]
+                                    break
                         
                         list_Hist_ProcType.append(Hist_ProcType)
                         list_Unc_ProcType.append(Unc_ProcType)
@@ -531,6 +606,11 @@ class harvester:
                                 Hist_ProcType[0] = 0.0001
                             if (signal_cross_section is not None) and (iProcType == 0):
                                 Hist_ProcType = Hist_ProcType/signal_cross_section
+                            if processes_scale_factors is not None:
+                                for ProcSF in processes_scale_factors:
+                                    if iProcType == ProcSF[0]:
+                                        Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                        break
                             
                             universe_hists.append(Hist_ProcType)
                             
@@ -542,99 +622,88 @@ class harvester:
         
                 
                 #----------------------------------------------------------------------------------
+                list_Norm_ProcType_down = []
+                list_Norm_ProcType_up = []
                 for iProcType in range(len(datasets)):
-                    if ProcType_has_XS_unc[iProcType] or ProcType_has_norm_param[iProcType]:
-                        sf_up = list_ProcType_sum[iProcType]/list_ProcType_scales_up_sum[iProcType]
-                        sf_down = list_ProcType_sum[iProcType]/list_ProcType_scales_down_sum[iProcType]
-                        list_Hist_ProcType_down[iProcType] = list_Hist_ProcType_down[iProcType]*sf_down
-                        list_Hist_ProcType_up[iProcType] = list_Hist_ProcType_up[iProcType]*sf_up
-                        
+                    if (ProcType_has_XS_unc[iProcType] or ProcType_has_norm_param[iProcType]) and (iSource == "Scales"):
+                        sf_up = list_ProcType_sum[iProcType]/list_ProcType_norm_up_sum[iProcType]
+                        sf_down = list_ProcType_sum[iProcType]/list_ProcType_norm_down_sum[iProcType]
+                        #list_Hist_ProcType_down[iProcType] = list_Hist_ProcType_down[iProcType]*sf_down
+                        #list_Hist_ProcType_up[iProcType] = list_Hist_ProcType_up[iProcType]*sf_up
+                        list_Norm_ProcType_down.append(sf_down)
+                        list_Norm_ProcType_up.append(sf_up)
+                    else:
+                        list_Norm_ProcType_down.append(1.)
+                        list_Norm_ProcType_up.append(1.)
             
                 self.hist_table3D[systematics[iSource][0]] = [list_Hist_ProcType_down, list_Hist_ProcType_up]
                 self.unc_table3D[systematics[iSource][0]] = [list_Unc_ProcType_down, list_Unc_ProcType_up]
+                self.norm_table3D[systematics[iSource][0]] = [list_Norm_ProcType_down, list_Norm_ProcType_up]
 
                 self.sys_IDs.append(systematics[iSource][0])
                 self.sys_labels.append(iSource)       
     
 
             #--------------------------------------------------------------------------------
-            elif( (iSource == "PDF") or (iSource == "AlphaS") ): 
+            elif( iSource == "PDF" ):
                 
-                #----------------------------------------------------------------------------------
-                # Get the normalization factors from the "SystVar" histograms
-                list_Hist_ProcType_scales_up = []
-                list_Hist_ProcType_scales_down = []
-                for iUniverse in range(2):  # loop in the universes
-                    list_Hist_ProcType = []
-                    for iProcType in range(len(datasets)):  # loop in the proc_type_lists
-                        Hist_ProcType = np.zeros(len(bins)-1)
-                        for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
-                            proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(iUniverse)]
-                            Hist_raw = proc_dic["Hist"]
-                            Start_raw = proc_dic["Start"]
-                            End_raw = proc_dic["End"]
-                            Nbins_raw = proc_dic["Nbins"]
-                            Delta_raw = (End_raw - Start_raw)/Nbins_raw
-                            
-                            Hist_new = [0]*(len(bins)-1)
-                                        
-                            for iRawBin in range(Nbins_raw):
-                                inf_raw = Start_raw + iRawBin*Delta_raw
-                                sup_raw = Start_raw + (iRawBin+1)*Delta_raw
-                                for iNewBin in range(len(Hist_new)):
-                                    if( (inf_raw >= bins[iNewBin]) and (sup_raw <= bins[iNewBin+1]) ):
-                                        Hist_new[iNewBin] = Hist_new[iNewBin] + Hist_raw[iRawBin]
-                        
-                            for iNewBin in range(len(Hist_new)):
-                                if Hist_new[iNewBin] < 0:
-                                    Hist_new[iNewBin] = 0
-                            
-                            Hist_ProcType = Hist_ProcType + np.array(Hist_new)
-                        
-                        if Hist_ProcType.sum() == 0:
-                            Hist_ProcType[0] = 0.0001
-                        if (signal_cross_section is not None) and (iProcType == 0):
-                            Hist_ProcType = Hist_ProcType/signal_cross_section
-                        
-                        list_Hist_ProcType.append(Hist_ProcType)
-    
-                    if iUniverse == 0:
-                        list_Hist_ProcType_scales_down = copy.deepcopy(list_Hist_ProcType)
-                    else:
-                        list_Hist_ProcType_scales_up = copy.deepcopy(list_Hist_ProcType)
-        
-                list_ProcType_scales_up_sum = []
-                list_ProcType_scales_down_sum = []
-                for iProcType in range(len(datasets)):  # loop in the proc_type_lists
-                    list_ProcType_scales_up_sum.append(list_Hist_ProcType_scales_up[iProcType].sum())
-                    list_ProcType_scales_down_sum.append(list_Hist_ProcType_scales_down[iProcType].sum())
-            
-            
-                #----------------------------------------------------------------------------------
-                list_Hist_ProcType_up = []
-                list_Unc_ProcType_up = []
                 list_Hist_ProcType_down = []
                 list_Unc_ProcType_down = []
-                for iUniverse in range(2):  # loop in the universes
-                    list_Hist_ProcType = []
-                    list_Unc_ProcType = []
-                    for iProcType in range(len(datasets)):  # loop in the proc_type_lists
-                
-                        Hist_ProcType = np.zeros(len(bins)-1)
-                        Unc_ProcType = np.zeros(len(bins)-1)  # Stat. Uncertainty of Hist
-                        for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
-                            #print(systematics[iSource][0], iUniverse, iProcType, iProcDic)
-                            proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(iUniverse)]
+                list_Hist_ProcType_up = []
+                list_Unc_ProcType_up = []
+                list_ProcType_norm_up_sum = []
+                list_ProcType_norm_down_sum = []
+                for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+
+                    Hist_ProcType_up = np.zeros(len(bins)-1)
+                    Hist_ProcType_down = np.zeros(len(bins)-1)
+                    Unc_ProcType_up = np.zeros(len(bins)-1)  # Stat. Uncertainty of Hist
+                    Unc_ProcType_down = np.zeros(len(bins)-1)  # Stat. Uncertainty of Hist
+                    for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
+
+                        list_Hist_PDFuniverse = []
+
+                        # Find number of pdf universes
+                        keys_diclist = datasets[iProcType][iProcDic].keys()
+                        num_dislist = [int(dicname.split("_")[-1]) for dicname in keys_diclist]
+                        NPDFuniverses = max(num_dislist)+1
+
+                        # Find the PDF type
+                        hist_proc_dic_type = np.array(datasets[iProcType][iProcDic][var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(NPDFuniverses-1)]["Hist"])
+                        hist_proc_dic_cv = np.array(datasets[iProcType][iProcDic][var+"_"+str(region)+"_0_0"]["Hist"])
+                        has_positive = False
+                        for ipbin in range(len(hist_proc_dic_cv)):
+                            if hist_proc_dic_cv[ipbin] > 0:
+                                ID_PDF_TYPE = round(hist_proc_dic_type[ipbin]/hist_proc_dic_cv[ipbin])
+                                has_positive = True
+                                break
+                        if has_positive:
+                            if ID_PDF_TYPE == 2:
+                                PDF_TYPE = "mc"
+                            elif ID_PDF_TYPE == 1:
+                                PDF_TYPE = "hessian"
+                            else:
+                                PDF_TYPE = "none"
+                        else:
+                            PDF_TYPE = "hessian" # dumb treatment of zeros
+
+                        # Check if there is an alphaS uncertainty:
+                        n_offset = 0
+                        if( NPDFuniverses-1 == 33 or NPDFuniverses-1 == 103 ):
+                               n_offset = 2
+
+                        for iPDFuniverse in range(NPDFuniverses):  # loop in the PDF universes
+                            proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(iPDFuniverse)]
                             Hist_raw = proc_dic["Hist"]
                             Unc_raw = proc_dic["Unc"]
                             Start_raw = proc_dic["Start"]
                             End_raw = proc_dic["End"]
                             Nbins_raw = proc_dic["Nbins"]
                             Delta_raw = (End_raw - Start_raw)/Nbins_raw
-                    
+
                             Hist_new = [0]*(len(bins)-1)
                             Unc_new = [0]*(len(bins)-1)
-                                    
+
                             for iRawBin in range(Nbins_raw):
                                 inf_raw = Start_raw + iRawBin*Delta_raw
                                 sup_raw = Start_raw + (iRawBin+1)*Delta_raw
@@ -642,52 +711,196 @@ class harvester:
                                     if( (inf_raw >= bins[iNewBin]) and (sup_raw <= bins[iNewBin+1]) ):
                                         Hist_new[iNewBin] = Hist_new[iNewBin] + Hist_raw[iRawBin]
                                         Unc_new[iNewBin] = np.sqrt( Unc_new[iNewBin]**2 + Unc_raw[iRawBin]**2 )
-                    
+
                             for iNewBin in range(len(Hist_new)):
                                 if Hist_new[iNewBin] < 0:
                                     Hist_new[iNewBin] = 0
                                     Unc_new[iNewBin] = 0
-                    
-                            Hist_ProcType = Hist_ProcType + np.array(Hist_new)
-                            Unc_ProcType = np.sqrt(Unc_ProcType**2 + np.array(Unc_new)**2)
-                        
-                        if Hist_ProcType.sum() == 0:
-                            Hist_ProcType[0] = 0.0001
-                            Unc_ProcType[0] = 0.0001
-                        if (signal_cross_section is not None) and (iProcType == 0):
-                            Hist_ProcType = Hist_ProcType/signal_cross_section
-                            Unc_ProcType = Unc_ProcType/signal_cross_section
-                        
-                        list_Hist_ProcType.append(Hist_ProcType)
-                        list_Unc_ProcType.append(Unc_ProcType)
-        
-                    if iUniverse == 0:
-                        list_Hist_ProcType_down = copy.deepcopy(list_Hist_ProcType)
-                        list_Unc_ProcType_down = copy.deepcopy(list_Unc_ProcType)
-                    else:
-                        list_Hist_ProcType_up = copy.deepcopy(list_Hist_ProcType)
-                        list_Unc_ProcType_up = copy.deepcopy(list_Unc_ProcType)
-                    
-                    
+
+                            if iPDFuniverse == 0:
+                                Hist_0 = Hist_new
+                            elif iPDFuniverse == NPDFuniverses-1:
+                                Hist_cv = Hist_new
+                            else:
+                                list_Hist_PDFuniverse.append(Hist_new)
+
+                        #print(iProcType, PDF_TYPE, ID_PDF_TYPE)
+                        if PDF_TYPE == "hessian":
+                            PDFunc = np.zeros_like(Hist_cv)
+                            for iPDFuniverse in range(NPDFuniverses-2-n_offset):
+                                PDFunc = PDFunc + (np.array(list_Hist_PDFuniverse[iPDFuniverse]) - np.array(Hist_0))**2
+                            PDFunc = np.sqrt(PDFunc)
+                        elif PDF_TYPE == "mc":
+                            Hist_cv = np.array(Hist_cv)/2
+                            PDFunc = np.zeros_like(Hist_cv)
+                            for ibin in range(len(Hist_cv)):
+                                list_values_ibin = []
+                                for iPDFuniverse in range(NPDFuniverses-2-n_offset):
+                                    list_values_ibin.append(list_Hist_PDFuniverse[iPDFuniverse][ibin])
+                                list_values_ibin.sort()
+                                NPDFvar = len(list_values_ibin)
+                                PDFunc[ibin] = (list_values_ibin[int(round(0.841344746*NPDFvar))] - list_values_ibin[int(round(0.158655254*NPDFvar))])/2.
+                        else:
+                            Hist_cv = np.array(Hist_cv)/3
+                            PDFunc = np.zeros_like(Hist_cv)
+
+                        if n_offset > 0:
+                            AlphaSunc = np.abs(np.array(list_Hist_PDFuniverse[-1])-np.array(list_Hist_PDFuniverse[-2]))/2.
+                            PDFunc = np.sqrt(PDFunc**2 + AlphaSunc**2)
+
+                        Hist_new_up = np.array(Hist_cv)+PDFunc
+                        Hist_new_down = np.array(Hist_cv)-PDFunc
+
+                        for iNewBin in range(len(Hist_cv)):
+                            if Hist_new_down[iNewBin] < 0:
+                                Hist_new_down[iNewBin] = 0
+
+                        Hist_ProcType_up = Hist_ProcType_up + Hist_new_up
+                        Hist_ProcType_down = Hist_ProcType_down + Hist_new_down
+                        Unc_ProcType_up = np.sqrt(Unc_ProcType**2 + np.array(Unc_new)**2) # Dumb [not used]
+                        Unc_ProcType_down = np.sqrt(Unc_ProcType**2 + np.array(Unc_new)**2) # Dumb [not used]
+
+                    if Hist_ProcType_up.sum() == 0:
+                        Hist_ProcType_up[0] = 0.0001
+                        Unc_ProcType_up[0] = 0.0001
+                    if Hist_ProcType_down.sum() == 0:
+                        Hist_ProcType_down[0] = 0.0001
+                        Unc_ProcType_down[0] = 0.0001
+
+                    if (signal_cross_section is not None) and (iProcType == 0):
+                        Hist_ProcType_up = Hist_ProcType_up/signal_cross_section
+                        Unc_ProcType_up = Unc_ProcType_up/signal_cross_section
+                        Hist_ProcType_down = Hist_ProcType_down/signal_cross_section
+                        Unc_ProcType_down = Unc_ProcType_down/signal_cross_section
+                    if processes_scale_factors is not None:
+                        for ProcSF in processes_scale_factors:
+                            if iProcType == ProcSF[0]:
+                                Hist_ProcType_up = Hist_ProcType_up*ProcSF[1]
+                                Unc_ProcType_up = Unc_ProcType_up*ProcSF[1]
+                                Hist_ProcType_down = Hist_ProcType_down*ProcSF[1]
+                                Unc_ProcType_down = Unc_ProcType_down*ProcSF[1]
+                                break
+
+                    list_Hist_ProcType_down.append(Hist_ProcType_down)
+                    list_Unc_ProcType_down.append(Unc_ProcType_down)
+                    list_Hist_ProcType_up.append(Hist_ProcType_up)
+                    list_Unc_ProcType_up.append(Unc_ProcType_up)
+
+                    # Get the normalization factors from the "SystVar" histograms
+                    list_ProcType_norm_up_sum.append(Hist_ProcType_up.sum())
+                    list_ProcType_norm_down_sum.append(Hist_ProcType_down.sum())
+
+
                 #----------------------------------------------------------------------------------
+                list_Norm_ProcType_down = []
+                list_Norm_ProcType_up = []
                 for iProcType in range(len(datasets)):
                     if ProcType_has_norm_param[iProcType]:
-                        sf_up = list_ProcType_sum[iProcType]/list_ProcType_scales_up_sum[iProcType]
-                        sf_down = list_ProcType_sum[iProcType]/list_ProcType_scales_down_sum[iProcType]
-                        list_Hist_ProcType_down[iProcType] = list_Hist_ProcType_down[iProcType]*sf_down
-                        list_Hist_ProcType_up[iProcType] = list_Hist_ProcType_up[iProcType]*sf_up
-                        
-                #print("WZ_nominal_sum_eff", list_ProcType_sum[2])  
-                #print("WZ_pdf_up_sum_eff", list_ProcType_scales_up_sum[2])  
-                #print("WZ_pdf_down_sum_eff", list_ProcType_scales_down_sum[2])
+                        sf_up = list_ProcType_sum[iProcType]/list_ProcType_norm_up_sum[iProcType]
+                        sf_down = list_ProcType_sum[iProcType]/list_ProcType_norm_down_sum[iProcType]
+                        #list_Hist_ProcType_down[iProcType] = list_Hist_ProcType_down[iProcType]*sf_down
+                        #list_Hist_ProcType_up[iProcType] = list_Hist_ProcType_up[iProcType]*sf_up
+                        list_Norm_ProcType_down.append(sf_down)
+                        list_Norm_ProcType_up.append(sf_up)
+                    else:
+                        list_Norm_ProcType_down.append(1.)
+                        list_Norm_ProcType_up.append(1.)
 
-            
+
+                self.hist_table3D[systematics[iSource][0]] = [list_Hist_ProcType_down, list_Hist_ProcType_up]
+                self.unc_table3D[systematics[iSource][0]] = [list_Unc_ProcType_down, list_Unc_ProcType_up]
+                self.norm_table3D[systematics[iSource][0]] = [list_Norm_ProcType_down, list_Norm_ProcType_up]
+
+                self.sys_IDs.append(systematics[iSource][0])
+                self.sys_labels.append(iSource)
+
+
+
+            #--------------------------------------------------------------------------------
+            elif( iSource == "TopPt" ):
+
+                list_Hist_ProcType_up = []
+                list_Unc_ProcType_up = []
+                list_Hist_ProcType_down = []
+                list_Unc_ProcType_down = []
+                #print(systematics[iSource][1])
+
+                # Only one universe
+                iUniverse = 0
+
+                list_Hist_ProcType = []
+                list_Unc_ProcType = []
+                for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+
+                    Hist_ProcType = np.zeros(len(bins)-1)
+                    Unc_ProcType = np.zeros(len(bins)-1)  # Stat. Uncertainty of Hist
+                    for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
+                        Hist_name = var+"_"+str(region)+"_"+str(systematics[iSource][0])+"_"+str(iUniverse)
+                        if Hist_name in datasets[iProcType][iProcDic]:
+                            proc_dic = datasets[iProcType][iProcDic][Hist_name]
+                        else:
+                            proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_0_0"]
+                        Hist_raw = proc_dic["Hist"]
+                        Unc_raw = proc_dic["Unc"]
+                        Start_raw = proc_dic["Start"]
+                        End_raw = proc_dic["End"]
+                        Nbins_raw = proc_dic["Nbins"]
+                        Delta_raw = (End_raw - Start_raw)/Nbins_raw
+
+                        Hist_new = [0]*(len(bins)-1)
+                        Unc_new = [0]*(len(bins)-1)
+
+                        for iRawBin in range(Nbins_raw):
+                            inf_raw = Start_raw + iRawBin*Delta_raw
+                            sup_raw = Start_raw + (iRawBin+1)*Delta_raw
+                            for iNewBin in range(len(Hist_new)):
+                                if( (inf_raw >= bins[iNewBin]) and (sup_raw <= bins[iNewBin+1]) ):
+                                    Hist_new[iNewBin] = Hist_new[iNewBin] + Hist_raw[iRawBin]
+                                    Unc_new[iNewBin] = np.sqrt( Unc_new[iNewBin]**2 + Unc_raw[iRawBin]**2 )
+
+                        for iNewBin in range(len(Hist_new)):
+                            if Hist_new[iNewBin] < 0:
+                                Hist_new[iNewBin] = 0
+                                Unc_new[iNewBin] = 0
+
+                        Hist_ProcType = Hist_ProcType + np.array(Hist_new)
+                        Unc_ProcType = np.sqrt(Unc_ProcType**2 + np.array(Unc_new)**2)
+
+                    if Hist_ProcType.sum() == 0:
+                        Hist_ProcType[0] = 0.0001
+                        Unc_ProcType[0] = 0.0001
+                    if (signal_cross_section is not None) and (iProcType == 0):
+                        Hist_ProcType = Hist_ProcType/signal_cross_section
+                        Unc_ProcType = Unc_ProcType/signal_cross_section
+                    if processes_scale_factors is not None:
+                        for ProcSF in processes_scale_factors:
+                            if iProcType == ProcSF[0]:
+                                Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                Unc_ProcType = Unc_ProcType*ProcSF[1]
+                                break
+
+                    list_Hist_ProcType.append(Hist_ProcType)
+                    list_Unc_ProcType.append(Unc_ProcType)
+
+                list_Hist_ProcType_up = copy.deepcopy(list_Hist_ProcType)
+
+                list_Hist_ProcType_down = copy.deepcopy(list_Hist_ProcType)
+                for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+                    for ibin in range(len(list_Hist_ProcType_down[iProcType])):
+                        diff = list_Hist_ProcType_down[iProcType][ibin] - self.hist_table3D[0][0][iProcType][ibin]
+                        list_Hist_ProcType_down[iProcType][ibin] = list_Hist_ProcType_down[iProcType][ibin] - 2*diff
+
+                list_Unc_ProcType_up = copy.deepcopy(list_Unc_ProcType)
+                list_Unc_ProcType_down = copy.deepcopy(list_Unc_ProcType)
+
                 self.hist_table3D[systematics[iSource][0]] = [list_Hist_ProcType_down, list_Hist_ProcType_up]
                 self.unc_table3D[systematics[iSource][0]] = [list_Unc_ProcType_down, list_Unc_ProcType_up]
 
                 self.sys_IDs.append(systematics[iSource][0])
                 self.sys_labels.append(iSource)
 
+
+        #--------------------------------------------------------------------------------
         #print("WZ_nominal_sum", self.hist_table3D[0][0][2].sum())  
         #print("WZ_pdf_up_sum", self.hist_table3D[12][1][2].sum())  
         #print("WZ_pdf_down_sum", self.hist_table3D[12][0][2].sum())
@@ -702,10 +915,13 @@ class harvester:
         self.systematics = systematics
         self.ID_max = ID_max
         self.N_sources = (ID_max+1) + 2  # including lumi and stat sources
+        if processes_scale_factors is not None:
+            self.N_sources += 1  # including ProcSF
+        self.symmetric_factor = symmetric_factor
         self.smooth_repeat = smooth_repeat
         self.set_smooth_factor(smooth_factor)
         self.has_data = False
-        
+
         self.signal_name = signal_label 
         self.analysis_name = analysis_name
         #self.obs_features_list = []
@@ -746,7 +962,7 @@ class harvester:
                             max_count = np.amax(self.hist_table3D[0][0][iProcess])
                             group_sys = self.hist_table3D[iSource][iUniverse][iProcess][0]
                             group_cv = self.hist_table3D[0][0][iProcess][0]
-                            if group_cv > 0:
+                            if group_cv > 0 and group_sys > 0:
                                 frac_sys_unc = np.abs(group_sys - group_cv)/group_cv
                             else:
                                 frac_sys_unc = 0
@@ -763,7 +979,7 @@ class harvester:
                                 if( (iBin < len(self.bins)-2) and (frac_stat_unc > smooth_cut) ):
                                     group_sys += self.hist_table3D[iSource][iUniverse][iProcess][iBin + 1]
                                     group_cv += self.hist_table3D[0][0][iProcess][iBin + 1]
-                                    if group_cv > 0:
+                                    if group_cv > 0 and group_sys > 0:
                                         frac_sys_unc = np.abs(group_sys - group_cv)/group_cv
                                     else:
                                         frac_sys_unc = 0
@@ -780,7 +996,7 @@ class harvester:
                                     smooth_toright_bins.append(self.bins[iBin + 1])
                                     group_sys = self.hist_table3D[iSource][iUniverse][iProcess][iBin + 1]
                                     group_cv = self.hist_table3D[0][0][iProcess][iBin + 1]
-                                    if group_cv > 0:
+                                    if group_cv > 0 and group_sys > 0:
                                         frac_sys_unc = np.abs(group_sys - group_cv)/group_cv
                                     else:
                                         frac_sys_unc = 0
@@ -803,7 +1019,7 @@ class harvester:
                             max_count = np.amax(self.hist_table3D[0][0][iProcess])
                             group_sys = self.hist_table3D[iSource][iUniverse][iProcess][len(self.bins)-2]
                             group_cv = self.hist_table3D[0][0][iProcess][len(self.bins)-2]
-                            if group_cv > 0:
+                            if group_cv > 0 and group_sys > 0:
                                 frac_sys_unc = np.abs(group_sys - group_cv)/group_cv
                             else:
                                 frac_sys_unc = 0
@@ -824,7 +1040,7 @@ class harvester:
                                 if( (iBin > 0) and (frac_stat_unc > smooth_cut) ):
                                     group_sys += self.hist_table3D[iSource][iUniverse][iProcess][iBin]
                                     group_cv += self.hist_table3D[0][0][iProcess][iBin]
-                                    if group_cv > 0:
+                                    if group_cv > 0 and group_sys > 0:
                                         frac_sys_unc = np.abs(group_sys - group_cv)/group_cv
                                     else:
                                         frac_sys_unc = 0
@@ -841,7 +1057,7 @@ class harvester:
                                     smooth_toleft_bins.append(self.bins[iBin])
                                     group_sys = self.hist_table3D[iSource][iUniverse][iProcess][iBin]
                                     group_cv = self.hist_table3D[0][0][iProcess][iBin]
-                                    if group_cv > 0:
+                                    if group_cv > 0 and group_sys > 0:
                                         frac_sys_unc = np.abs(group_sys - group_cv)/group_cv
                                     else:
                                         frac_sys_unc = 0
@@ -868,6 +1084,12 @@ class harvester:
                                 self.smooth_toright_bins_list_up[iSource][iProcess] = smooth_toright_bins  
                                 self.smooth_toleft_bins_list_up[iSource][iProcess] = smooth_toleft_bins
                             
+
+                            # Apply the normalization factor to the histograms from Scales, PDF, etc
+                            if self.norm_table3D[iSource][0] != 0:
+                                self.hist_table3D[iSource][iUniverse][iProcess] = self.hist_table3D[iSource][iUniverse][iProcess]*self.norm_table3D[iSource][iUniverse][iProcess]
+
+
         
         self.create_tables3D()
         self.create_bkg_tables2D()
@@ -907,6 +1129,7 @@ class harvester:
                     for iProcess in range(self.number_ds_groups):
                         self.sys_unc_table3D[iSource][iUniverse].append(np.zeros(len(self.bins)-1))
                 
+                
         for iSource in range(self.N_sources):
             if self.hist_table3D[iSource][0] != 0:
                 if( (iSource > 0) and (iSource < self.ID_max+1) ): # Systematics with smoothing
@@ -920,6 +1143,7 @@ class harvester:
                                 smooth_toright_bins = self.smooth_toright_bins_list_up[iSource][iProcess]
                                 
                             sys_unc_table3D_toright = np.copy(self.sys_unc_table3D[iSource][iUniverse][iProcess])
+
                             for isBin in range(len(smooth_toright_bins)-1):
                                 combined_sys = 0
                                 combined_cv = 0
@@ -970,7 +1194,8 @@ class harvester:
                                         self.sys_unc_table3D[iSource][iUniverse][iProcess][iBin] = np.minimum(sys_unc_table3D_toright[iBin], sys_unc_table3D_toleft[iBin])
                                 else:
                                     self.sys_unc_table3D[iSource][iUniverse][iProcess][iBin] = (sys_unc_table3D_toright[iBin] + sys_unc_table3D_toleft[iBin])/2
-                                        
+                                
+                                
                             
                             # Smearing
                             """
@@ -996,7 +1221,7 @@ class harvester:
                             """
                             
                             #---------------------------------------------------------------------------------
-                            # 353QH, twice
+                            # 353QH
                             # void  TH1::SmoothArray(Int_t nn, Double_t *xx, Int_t ntimes)
                             for ipass in range(self.smooth_repeat):
                                 if len(self.bins)-1 >= 3:
@@ -1097,6 +1322,24 @@ class harvester:
                                     
                                     self.sys_unc_table3D[iSource][iUniverse][iProcess] = xx*self.hist_table3D[0][0][iProcess]
                             #---------------------------------------------------------------------------------
+                            
+                            """
+                            for iBin in range(len(self.bins)-1):
+                                syst_unc_down = self.sys_unc_table3D[iSource][0][iProcess][iBin]
+                                syst_unc_up = self.sys_unc_table3D[iSource][1][iProcess][iBin]
+                                syst_unc_max = max(abs(syst_unc_down), abs(syst_unc_up))
+                                stat_unc = self.unc_table3D[0][0][iProcess][iBin]
+                                if self.hist_table3D[0][0][iProcess][iBin] > 0 and stat_unc > self.symmetric_factor*syst_unc_max:
+                                    if syst_unc_down != 0 and syst_unc_up != 0:
+                                        self.sys_unc_table3D[iSource][0][iProcess][iBin] = (syst_unc_down/abs(syst_unc_down))*syst_unc_max                                    
+                                        self.sys_unc_table3D[iSource][1][iProcess][iBin] = (syst_unc_up/abs(syst_unc_up))*syst_unc_max 
+                                    elif syst_unc_down == 0 and syst_unc_up != 0:
+                                        self.sys_unc_table3D[iSource][0][iProcess][iBin] = -(syst_unc_up/abs(syst_unc_up))*syst_unc_max                                    
+                                        self.sys_unc_table3D[iSource][1][iProcess][iBin] = (syst_unc_up/abs(syst_unc_up))*syst_unc_max
+                                    elif syst_unc_down != 0 and syst_unc_up == 0:
+                                        self.sys_unc_table3D[iSource][0][iProcess][iBin] = (syst_unc_down/abs(syst_unc_down))*syst_unc_max                                    
+                                        self.sys_unc_table3D[iSource][1][iProcess][iBin] = -(syst_unc_down/abs(syst_unc_down))*syst_unc_max
+                            """
                             
                 elif( iSource >= self.ID_max+1 ):   # Lumi and Stat systematics 
                     for iUniverse in range(2):
@@ -1408,7 +1651,7 @@ class harvester:
                     for iUniverse in range(2):
                         for iProcess in range(self.number_ds_groups):
                             for iBin in range(len(self.bins)-1):
-                                if self.hist_table3D[0][0][iProcess][iBin] > 0:
+                                if self.hist_table3D[0][0][iProcess][iBin] > 0.0001:
                                     self.sys_unc_table3D[iSource][iUniverse][iProcess][iBin] = self.sys_unc_table3D[iSource][iUniverse][iProcess][iBin]/self.hist_table3D[0][0][iProcess][iBin]
                                 else: 
                                     self.sys_unc_table3D[iSource][iUniverse][iProcess][iBin] = 0
@@ -1682,7 +1925,7 @@ class harvester:
                 plt.step(plot_bins, hist_up, label=group_name, color="black", linewidth=1.5 )
                 plt.step(plot_bins, hist_down, linestyle="--", color="black", linewidth=1.5 )
                 
-                i_colors = 0
+                i_colors = 1
                 for i in range(len(self.sys_IDs)):
                     if self.sys_labels[i] in sys_group_list:
                         hist_up = np.insert(self.sys_unc_table2D[self.sys_IDs[i]][1], 0, self.sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
@@ -1704,7 +1947,7 @@ class harvester:
                 hist_max = np.maximum(np.abs(hist_down), np.abs(hist_up))
                 plt.step(plot_bins, hist_max, label=group_name, color="black", linewidth=1.8)
                 
-                i_colors = 0
+                i_colors = 1
                 for i in range(len(self.sys_IDs)):
                     if self.sys_labels[i] in sys_group_list:
                         hist_up = np.insert(self.sys_unc_table2D[self.sys_IDs[i]][1], 0, self.sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
@@ -1763,7 +2006,7 @@ class harvester:
                 plt.step(plot_bins, hist_up, label=group_name, color="black", linewidth=1.5 )
                 plt.step(plot_bins, hist_down, linestyle="--", color="black", linewidth=1.5 )
                 
-                i_colors = 0
+                i_colors = 1
                 for i in range(len(self.sys_IDs)):
                     if self.sys_labels[i] in sys_group_list:
                         hist_up = np.insert(self.signal_sys_unc_table2D[self.sys_IDs[i]][1], 0, self.signal_sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
@@ -1785,7 +2028,7 @@ class harvester:
                 hist_max = np.maximum(np.abs(hist_down), np.abs(hist_up))
                 plt.step(plot_bins, hist_max, label=group_name, color="black", linewidth=1.8)
                 
-                i_colors = 0
+                i_colors = 1
                 for i in range(len(self.sys_IDs)):
                     if self.sys_labels[i] in sys_group_list:
                         hist_up = np.insert(self.signal_sys_unc_table2D[self.sys_IDs[i]][1], 0, self.signal_sys_unc_table2D[self.sys_IDs[i]][1][0], axis=0)
@@ -2166,11 +2409,10 @@ class harvester:
         if mode == "shape":
             for iregion in range(len(self.regions_labels)):
                 if iregion > 0:
-                    datacard.write(self.regions_labels[iregion][:-2] + "_norm_" + self.period + " rateParam * " + self.regions_labels[iregion][:-2] + " 1 [0.1,10]\n")
-                    #datacard.write(self.regions_labels[iregion][:-2] + "_norm rateParam * " + self.regions_labels[iregion][:-2] + " 1 [0.1,10]\n")
+                    #datacard.write(self.regions_labels[iregion][:-2] + "_norm_" + self.period + " rateParam * " + self.regions_labels[iregion][:-2] + " 1 [0.1,10]\n")
+                    datacard.write(self.regions_labels[iregion][:-2] + "_norm rateParam * " + self.regions_labels[iregion][:-2] + " 1 [0.1,10]\n")
             datacard.write("* autoMCStats 100 0 1\n")
                 
-            
         datacard.close()
         
         if mode == "shape":

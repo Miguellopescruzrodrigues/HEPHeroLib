@@ -1,1 +1,1 @@
-pip3 install ./dist/hepherolib-1.1.4.tar.gz
+pip3 install ./dist/hepherolib-1.1.5.tar.gz
