@@ -57,6 +57,7 @@ setup(
         "scikit-learn>=0.24.2",
         "statsmodels>=0.12.2",
         "h5py>=2.10.0",
+        "iminuit>=2.25.2",
     ],
     cmdclass={
         'build_py': build_py

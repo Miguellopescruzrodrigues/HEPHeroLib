@@ -1,4 +1,5 @@
 import numpy as np
+from iminuit.cost import poisson_chi2, chi2
 #import mpmath as mp
 
 #======================================================================================================================
@@ -123,6 +124,7 @@ def get_interval(x, pdf, nsigma=1):
     
     return alpha, beta
 
+
 #======================================================================================================================
 def correlation(x, y, weight=None):
     # Returns the linear correlation between the variables x (1D array) and y (1D array).
@@ -143,4 +145,87 @@ def correlation(x, y, weight=None):
     return cov_xy/(cov_xx*cov_yy)
 
 
+#======================================================================================================================
+class analysis_model:
+    def __init__(self, xe_regions, n_regions, t_regions, tsys_regions, has_SR=True):
+        self.xe_regions = xe_regions
+        self.data_regions = n_regions, t_regions, tsys_regions
+        self.has_SR = has_SR
 
+    def _pred(self, par):
+        n_regions, t_regions, tsys_regions = self.data_regions
+
+        N_rateParam = len(t_regions[0])
+        if self.has_SR:
+            N_nuisances_stat_param = len(t_regions[0])*len(n_regions[0])
+        else:
+            N_nuisances_stat_param = 0
+        self.N_nuisances_syst_param = int(len(tsys_regions[0])/(2*len(t_regions[0])))
+
+        rate = par[:N_rateParam]
+
+        if self.has_SR:
+            nuisances_stat = np.array(par[N_rateParam:N_nuisances_stat_param+N_rateParam])
+            gamma = []
+            bins = len(self.xe_regions[0]) - 1
+            for i in range(len(t_regions[0])):
+                gamma.append(nuisances_stat[i*bins:(i+1)*bins])
+
+        alpha = np.array(par[N_nuisances_stat_param+N_rateParam:])
+
+        E_n_regions = []
+        E_t_regions = []
+        for ir in range(len(self.xe_regions)):
+            bins = len(self.xe_regions[ir]) - 1
+            #n_regions, t_regions, tsys_regions = self.data_regions
+
+            delta = np.empty((len(alpha), len(t_regions[ir]), 2)).tolist()
+            ii = 0
+            for i in range(len(alpha)):
+                for p in range(len(t_regions[ir])):
+                    for u in range(2):
+                        delta[i][p][u] = tsys_regions[ir][ii] - t_regions[ir][p]
+                        ii += 1
+
+            talpha = t_regions[ir].copy()
+            for p in range(len(t_regions[ir])):
+                for i in range(len(alpha)):
+                    if np.abs(alpha[i]) <= 1:
+                        talpha[p] = talpha[p] + 0.5*((delta[i][p][1]-delta[i][p][0])*alpha[i] + (1./8.)*(delta[i][p][1]+delta[i][p][0])*(3*alpha[i]**6 - 10*alpha[i]**4 + 15*alpha[i]**2))
+                    elif alpha[i] > 1:
+                        talpha[p] = talpha[p] + delta[i][p][1]*np.abs(alpha[i])
+                    elif alpha[i] < 1:
+                        talpha[p] = talpha[p] + delta[i][p][0]*np.abs(alpha[i])
+
+            E_n = 0
+            E_t = []
+            for p in range(len(t_regions[ir])):
+                if ir == 0 and self.has_SR:
+                    E_t.append(gamma[p]*talpha[p])
+                    E_n += rate[p]*gamma[p]*talpha[p]
+                else:
+                    E_t.append(talpha[p])
+                    E_n += rate[p]*talpha[p]
+
+            E_n_regions.append(E_n)
+            E_t_regions.append(E_t)
+
+        return E_n_regions, E_t_regions, alpha
+
+    def __call__(self, par):
+        n_regions, t_regions, tsys_regions = self.data_regions
+
+        E_n_regions, E_t_regions, alpha = self._pred(par)
+        for ir in range(len(E_n_regions)):
+            if ir == 0:
+                r = poisson_chi2(n_regions[ir], E_n_regions[ir])
+            else:
+                r += poisson_chi2(n_regions[ir], E_n_regions[ir])
+
+        if self.has_SR:
+            for i in range(len(t_regions[0])):
+                r += poisson_chi2(t_regions[0][i], E_t_regions[0][i])
+
+        for i in range(self.N_nuisances_syst_param):
+            r += chi2(alpha[i], 1, 0)
+        return r

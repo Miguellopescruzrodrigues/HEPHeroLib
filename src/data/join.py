@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 
-def join_datasets(ds, new_name, input_list, mode="normal"):
+def join_datasets(ds, new_name, input_list, mode="normal", delete_inputs=True):
     
     datasets_list = []
     for input_name in input_list:
@@ -47,9 +47,10 @@ def join_datasets(ds, new_name, input_list, mode="normal"):
     else:
         print("Type of the items is not supported!")
     
-    if good_list:
-        for input_name in input_list:
-            del ds[input_name]
+    if delete_inputs:
+        if good_list:
+            for input_name in input_list:
+                del ds[input_name]
     
     del datasets_list
         

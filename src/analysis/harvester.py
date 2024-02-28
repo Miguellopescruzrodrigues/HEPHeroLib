@@ -19,7 +19,7 @@ class harvester:
     """
 
     #==============================================================================================================
-    def __init__(self, region, var, period, bins, backgrounds, bkg_labels, bkg_colors, signal, signal_label, signal_color, regions_labels, systematics, smooth_factor=1, smooth_repeat=2, symmetric_factor=999999999999, analysis_name=None, signal_cross_section=None, groups=None, full_year_correlated=None, processes_scale_factors=None, allow_syst_shape_only=True):
+    def __init__(self, region, var, period, bins, backgrounds, bkg_labels, bkg_colors, signal, signal_label, signal_color, regions_labels, systematics, smooth_factor=1, smooth_repeat=2, symmetric_factor=999999999999, analysis_name=None, signal_cross_section=None, groups=None, full_year_correlated=[], processes_scale_factors=None, allow_syst_shape_only=True, allow_single_bin_template=False):
         
         systematics_temp = systematics.copy()
         for iSource in systematics.keys():
@@ -91,6 +91,7 @@ class harvester:
         #self.smear_factor = smear_factor
         self.groups = groups
         self.full_year_correlated = full_year_correlated
+        self.allow_single_bin_template = allow_single_bin_template
         
         #--------------------------------------------------------------------------------
         for iProcType in range(len(datasets)):
@@ -349,8 +350,90 @@ class harvester:
 
                 self.sys_IDs.append(systematics[iSource][0])
                 self.sys_labels.append(iSource)
-        
-        
+
+                # JES->MET propagation shape normalized unc. plus JES->Jets propagation unc. when MET recoil is applied
+                if( iSource == "JES_Total" and ('Recoil' in systematics) ):
+
+                    for iUniverse in range(2):  # loop in the universes
+                        iUniverseEff = iUniverse+4
+                        list_Hist_ProcType = []
+                        for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+                            hist_proc_name = var+"_"+str(region)+"_"+str(systematics['Recoil'][0])+"_"+str(iUniverseEff)
+                            if hist_proc_name in datasets[iProcType][0]:
+                                Hist_ProcType = np.zeros(len(bins)-1)
+                                for iProcDic in range(len(datasets[iProcType])):  # loop in the proc_dictionaries inside the lists
+                                    #print(systematics['Recoil'][0], iUniverseEff, iProcType, iProcDic)
+                                    proc_dic = datasets[iProcType][iProcDic][var+"_"+str(region)+"_"+str(systematics['Recoil'][0])+"_"+str(iUniverseEff)]
+                                    Hist_raw = proc_dic["Hist"]
+                                    Start_raw = proc_dic["Start"]
+                                    End_raw = proc_dic["End"]
+                                    Nbins_raw = proc_dic["Nbins"]
+                                    Delta_raw = (End_raw - Start_raw)/Nbins_raw
+
+                                    Hist_new = [0]*(len(bins)-1)
+
+                                    for iRawBin in range(Nbins_raw):
+                                        inf_raw = Start_raw + iRawBin*Delta_raw
+                                        sup_raw = Start_raw + (iRawBin+1)*Delta_raw
+                                        for iNewBin in range(len(Hist_new)):
+                                            if( (inf_raw >= bins[iNewBin]) and (sup_raw <= bins[iNewBin+1]) ):
+                                                Hist_new[iNewBin] = Hist_new[iNewBin] + Hist_raw[iRawBin]
+
+                                    for iNewBin in range(len(Hist_new)):
+                                        if Hist_new[iNewBin] < 0:
+                                            Hist_new[iNewBin] = 0
+
+                                    Hist_ProcType = Hist_ProcType + np.array(Hist_new)
+
+                                if Hist_ProcType.sum() == 0:
+                                    Hist_ProcType[0] = 0.0001
+                                if (signal_cross_section is not None) and (iProcType == 0):
+                                    Hist_ProcType = Hist_ProcType/signal_cross_section
+                                if processes_scale_factors is not None:
+                                    for ProcSF in processes_scale_factors:
+                                        if iProcType == ProcSF[0]:
+                                            Hist_ProcType = Hist_ProcType*ProcSF[1]
+                                            break
+
+                                list_Hist_ProcType.append(Hist_ProcType)
+                            else:
+                                list_Hist_ProcType.append([])
+
+                        if iUniverse == 0:
+                            list_Hist_ProcType_down = list_Hist_ProcType
+                        if iUniverse == 1:
+                            list_Hist_ProcType_up = list_Hist_ProcType
+
+                    for iProcType in range(len(datasets)):  # loop in the proc_type_lists
+                        if len(list_Hist_ProcType_up[iProcType]) > 0:
+                            sf_up = list_ProcType_sum[iProcType]/self.hist_table3D[systematics[iSource][0]][1][iProcType].sum()
+                            sf_down = list_ProcType_sum[iProcType]/self.hist_table3D[systematics[iSource][0]][0][iProcType].sum()
+
+                            hist_table3D_JES_METJets_shape_down = self.hist_table3D[systematics[iSource][0]][0][iProcType]*sf_down
+                            hist_table3D_JES_METJets_shape_up = self.hist_table3D[systematics[iSource][0]][1][iProcType]*sf_up
+
+                            hist_table3D_JES_Jets_down = list_Hist_ProcType_down[iProcType]
+                            hist_table3D_JES_Jets_up = list_Hist_ProcType_up[iProcType]
+
+                            hist_table3D_nominal = self.hist_table3D[0][0][iProcType]
+
+                            variation_JES_METJets_shape_down = hist_table3D_JES_METJets_shape_down - hist_table3D_nominal
+                            variation_JES_METJets_shape_up = hist_table3D_JES_METJets_shape_up - hist_table3D_nominal
+
+                            variation_JES_Jets_down = hist_table3D_JES_Jets_down - hist_table3D_nominal
+                            variation_JES_Jets_up = hist_table3D_JES_Jets_up - hist_table3D_nominal
+
+                            for ibin in range(len(hist_table3D_JES_Jets_up)):
+                                if np.abs(variation_JES_Jets_up[ibin]) >= np.abs(variation_JES_METJets_shape_up[ibin]):
+                                    self.hist_table3D[systematics[iSource][0]][1][iProcType][ibin] = hist_table3D_JES_Jets_up[ibin]
+                                else:
+                                    self.hist_table3D[systematics[iSource][0]][1][iProcType][ibin] = hist_table3D_JES_METJets_shape_up[ibin]
+
+                                if np.abs(variation_JES_Jets_down[ibin]) >= np.abs(variation_JES_METJets_shape_down[ibin]):
+                                    self.hist_table3D[systematics[iSource][0]][0][iProcType][ibin] = hist_table3D_JES_Jets_down[ibin]
+                                else:
+                                    self.hist_table3D[systematics[iSource][0]][0][iProcType][ibin] = hist_table3D_JES_METJets_shape_down[ibin]
+
         
             #--------------------------------------------------------------------------------
             #elif( systematics[iSource][1] == 2 ):  
@@ -413,7 +496,7 @@ class harvester:
 
                 self.sys_IDs.append(systematics[iSource][0])
                 self.sys_labels.append(iSource)
-            
+
          
             #--------------------------------------------------------------------------------
             elif( (iSource == "Scales") or (iSource == "Recoil") ):  # Envelop
@@ -491,7 +574,11 @@ class harvester:
                 list_Hist_ProcType_down = []
                 list_Unc_ProcType_down = []
                 #print(systematics[iSource][1])
-                for iUniverse in range(systematics[iSource][1]):  # loop in the universes
+                if iSource == "Recoil":
+                    Nuniverses = systematics[iSource][1] - 2
+                else:
+                    Nuniverses = systematics[iSource][1]
+                for iUniverse in range(Nuniverses):  # loop in the universes
                     
                     list_Hist_ProcType = []
                     list_Unc_ProcType = []
@@ -2330,7 +2417,7 @@ class harvester:
                 
                 if self.sys_labels[k] != "Lumi" and self.sys_labels[k] != "Stat":
                     
-                    if len(self.bins)-1 == 1:
+                    if len(self.bins)-1 == 1 and not self.allow_single_bin_template:
                         syst_string = syst_string + '{:<8s}'.format("lnN")
                         for j in range(len(self.processes)):
                             if np.abs(self.sys_unc_table3D[self.sys_IDs[k]][0][j][i]) < 0.000001:
