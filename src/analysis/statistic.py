@@ -147,31 +147,39 @@ def correlation(x, y, weight=None):
 
 #======================================================================================================================
 class analysis_model:
-    def __init__(self, xe_regions, n_regions, t_regions, tsys_regions, has_SR=True):
+    def __init__(self, xe_regions, n_regions, t_regions, tsys_regions, N_rateParam=1):
         self.xe_regions = xe_regions
         self.data_regions = n_regions, t_regions, tsys_regions
-        self.has_SR = has_SR
+        self.N_rateParam = N_rateParam
 
     def _pred(self, par):
         n_regions, t_regions, tsys_regions = self.data_regions
 
-        N_rateParam = len(t_regions[0])
-        if self.has_SR:
-            N_nuisances_stat_param = len(t_regions[0])*len(n_regions[0])
-        else:
-            N_nuisances_stat_param = 0
+        N_nuisances_stat_param = 0
+        for ir in range(len(n_regions)):
+            if len(n_regions[ir]) > 1:
+                N_nuisances_stat_param += len(t_regions[ir])*len(n_regions[ir])
+
         self.N_nuisances_syst_param = int(len(tsys_regions[0])/(2*len(t_regions[0])))
 
-        rate = par[:N_rateParam]
+        rate = par[:self.N_rateParam]
 
-        if self.has_SR:
-            nuisances_stat = np.array(par[N_rateParam:N_nuisances_stat_param+N_rateParam])
-            gamma = []
-            bins = len(self.xe_regions[0]) - 1
-            for i in range(len(t_regions[0])):
-                gamma.append(nuisances_stat[i*bins:(i+1)*bins])
+        if N_nuisances_stat_param > 0:
+            nuisances_stat = np.array(par[self.N_rateParam:N_nuisances_stat_param+self.N_rateParam])
+            gamma = np.empty(len(n_regions)).tolist()
+            bins_control = 0
+            for ir in range(len(n_regions)):
+                gamma[ir] = []
+                if len(n_regions[ir]) > 1:
+                    bins = len(self.xe_regions[ir]) - 1
+                    for p in range(len(t_regions[ir])):
+                        gamma[ir].append(nuisances_stat[bins_control+p*bins:bins_control+(p+1)*bins])
+                    bins_control += len(t_regions[ir])*bins
 
-        alpha = np.array(par[N_nuisances_stat_param+N_rateParam:])
+        alpha = np.array(par[N_nuisances_stat_param+self.N_rateParam:])
+
+        #print("rate", rate)
+        #print("alpha", alpha)
 
         E_n_regions = []
         E_t_regions = []
@@ -200,12 +208,18 @@ class analysis_model:
             E_n = 0
             E_t = []
             for p in range(len(t_regions[ir])):
-                if ir == 0 and self.has_SR:
-                    E_t.append(gamma[p]*talpha[p])
-                    E_n += rate[p]*gamma[p]*talpha[p]
+                if len(n_regions[ir]) > 1:
+                    E_t.append(gamma[ir][p]*talpha[p])
+                    if p < self.N_rateParam:
+                        E_n += rate[p]*gamma[ir][p]*talpha[p]
+                    else:
+                        E_n += gamma[ir][p]*talpha[p]
                 else:
                     E_t.append(talpha[p])
-                    E_n += rate[p]*talpha[p]
+                    if p < self.N_rateParam:
+                        E_n += rate[p]*talpha[p]
+                    else:
+                        E_n += talpha[p]
 
             E_n_regions.append(E_n)
             E_t_regions.append(E_t)
@@ -222,9 +236,10 @@ class analysis_model:
             else:
                 r += poisson_chi2(n_regions[ir], E_n_regions[ir])
 
-        if self.has_SR:
-            for i in range(len(t_regions[0])):
-                r += poisson_chi2(t_regions[0][i], E_t_regions[0][i])
+        for ir in range(len(n_regions)):
+            if len(n_regions[ir]) > 1:
+                for i in range(len(t_regions[ir])):
+                    r += poisson_chi2(t_regions[ir][i], E_t_regions[ir][i])
 
         for i in range(self.N_nuisances_syst_param):
             r += chi2(alpha[i], 1, 0)
