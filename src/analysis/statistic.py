@@ -202,7 +202,7 @@ class analysis_model:
                         talpha[p] = talpha[p] + 0.5*((delta[i][p][1]-delta[i][p][0])*alpha[i] + (1./8.)*(delta[i][p][1]+delta[i][p][0])*(3*alpha[i]**6 - 10*alpha[i]**4 + 15*alpha[i]**2))
                     elif alpha[i] > 1:
                         talpha[p] = talpha[p] + delta[i][p][1]*np.abs(alpha[i])
-                    elif alpha[i] < 1:
+                    elif alpha[i] < -1:
                         talpha[p] = talpha[p] + delta[i][p][0]*np.abs(alpha[i])
 
             E_n = 0
@@ -211,7 +211,7 @@ class analysis_model:
                 if len(n_regions[ir]) > 1:
                     E_t.append(gamma[ir][p]*talpha[p])
                     if p < self.N_rateParam:
-                        E_n += rate[p]*gamma[ir][p]*talpha[p]
+                        E_n += rate[p]*gamma[ir][p]*talpha[p] # change it
                     else:
                         E_n += gamma[ir][p]*talpha[p]
                 else:
